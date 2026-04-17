@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dynatron — User Permission Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand:        #1a6fc4;
+      --brand-light:  #E6F1FB;
+      --brand-dark:   #0C447C;
+      --green:        #16a34a;
+      --green-light:  #dcfce7;
+      --green-dark:   #14532d;
+      --red:          #dc2626;
+      --red-light:    #fee2e2;
+      --red-dark:     #7f1d1d;
+      --gray-50:      #f8f9fa;
+      --gray-100:     #f1f3f5;
+      --gray-200:     #e9ecef;
+      --gray-300:     #dee2e6;
+      --gray-400:     #ced4da;
+      --gray-500:     #adb5bd;
+      --gray-600:     #6c757d;
+      --gray-700:     #495057;
+      --gray-800:     #343a40;
+      --gray-900:     #212529;
+      --radius-sm:    6px;
+      --radius-md:    10px;
+      --radius-lg:    14px;
+      --shadow-md:    0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #0f1923;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(26,111,196,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 80% 70%, rgba(22,163,74,0.10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .page-label {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 30px;
+      padding: 6px 16px 6px 10px;
+      z-index: 10;
+    }
+    .page-label svg { width: 22px; height: 22px; }
+    .page-label span { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); letter-spacing: 0.02em; }
+
+    .modal {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Header ── */
+    .modal-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--brand-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 600; color: var(--brand-dark);
+      flex-shrink: 0; letter-spacing: 0.05em;
+    }
+    .head-text p:first-child { font-size: 15px; font-weight: 600; color: var(--gray-900); }
+    .head-text p:last-child  { font-size: 12px; color: var(--gray-500); margin-top: 1px; }
+    .close-btn {
+      margin-left: auto; background: none; border: none;
+      font-size: 20px; color: var(--gray-400); cursor: pointer;
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .close-btn:hover { background: var(--gray-100); color: var(--gray-700); }
+
+    /* ── Bulk bar ── */
+    .modal-bulk {
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0; flex-wrap: wrap;
+      background: var(--gray-50);
+    }
+    .bulk-label { font-size: 12px; color: var(--gray-500); margin-right: 2px; }
+    .bulk-btn {
+      font-size: 12px; padding: 4px 12px;
+      border-radius: 20px; border: 1px solid var(--gray-300);
+      background: white; color: var(--gray-700); cursor: pointer;
+      font-family: inherit; transition: all 0.12s;
+    }
+    .bulk-btn:hover { border-color: var(--gray-500); color: var(--gray-900); }
+    #summary { margin-left: auto; display: flex; gap: 4px; align-items: center; }
+
+    /* ── Permission list ── */
+    .modal-body { overflow-y: auto; flex: 1; }
+
+    .cat-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 24px; cursor: pointer;
+      border-bottom: 1px solid var(--gray-200);
+      background: white; transition: background-color 0.15s;
+      user-select: none;
+    }
+    .cat-row:hover { filter: brightness(0.97); }
+
+    .sub-section { overflow: hidden; }
+    .sub-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 24px 9px 52px;
+      border-bottom: 1px solid var(--gray-100);
+      background: white; transition: background-color 0.15s;
+    }
+    .sub-row:hover { filter: brightness(0.97); }
+
+    .chev {
+      font-size: 8px; color: var(--gray-400);
+      transition: transform 0.18s; flex-shrink: 0;
+      width: 14px; text-align: center; display: inline-block;
+    }
+    .row-label { font-size: 13px; color: var(--gray-800); flex: 1; }
+    .cat-label  { font-weight: 600; color: var(--gray-900); }
+    .sub-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--gray-300); flex-shrink: 0;
+    }
+
+    /* ── Pills ── */
+    .pill-group { display: flex; gap: 3px; flex-shrink: 0; }
+    .pill {
+      font-size: 11px; font-weight: 500;
+      padding: 4px 12px; border-radius: 20px;
+      border: 1.5px solid var(--gray-300);
+      cursor: pointer; color: var(--gray-500);
+      background: var(--gray-100);
+      font-family: inherit;
+      transition: transform 0.08s;
+    }
+    .pill:active { transform: scale(0.95); }
+
+    /* ── Footer ── */
+    .modal-foot {
+      padding: 16px 24px; border-top: 1px solid var(--gray-200);
+      display: flex; gap: 10px; justify-content: flex-end;
+      flex-shrink: 0; background: var(--gray-50);
+    }
+    .cancel-btn {
+      padding: 9px 22px; border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-300); background: white;
+      color: var(--gray-700); cursor: pointer; font-size: 14px;
+      font-family: inherit; transition: all 0.12s;
+    }
+    .cancel-btn:hover { border-color: var(--gray-500); }
+    .save-btn {
+      padding: 9px 24px; border-radius: var(--radius-sm);
+      border: 1px solid var(--brand); background: var(--brand);
+      color: white; cursor: pointer; font-size: 14px; font-weight: 600;
+      font-family: inherit; transition: all 0.12s;
+    }
+    .save-btn:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--gray-900); color: white;
+      padding: 10px 20px; border-radius: 30px;
+      font-size: 13px; font-weight: 500;
+      opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; white-space: nowrap; z-index: 100;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex; gap: 14px; align-items: center;
+      padding: 8px 24px; border-bottom: 1px solid var(--gray-200);
+      flex-shrink: 0; background: white;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gray-500); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    @media (max-width: 480px) {
+      .pill { padding: 4px 8px; font-size: 10px; }
+      .modal-head, .modal-bulk, .cat-row, .sub-row, .modal-foot { padding-left: 16px; padding-right: 16px; }
+      .sub-row { padding-left: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-label">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="16" fill="#1a6fc4"/>
+      <path d="M10 16.5C10 13.46 12.46 11 15.5 11H22v2h-6.5C13.57 13 12 14.57 12 16.5S13.57 20 15.5 20H22v2h-6.5C12.46 22 10 19.54 10 16.5z" fill="white"/>
+      <circle cx="22" cy="13" r="2" fill="white"/>
+      <circle cx="22" cy="20" r="2" fill="white"/>
+    </svg>
+    <span>Dynatron Software — User Permission Manager</span>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div class="avatar">JD</div>
+      <div class="head-text">
+        <p>Jane Doe</p>
+        <p>jane.doe@dealership.com · Service Advisor</p>
+      </div>
+      <button class="close-btn" onclick="showToast('Changes discarded.')">✕</button>
+    </div>
+
+    <div class="legend">
+      <span style="font-size:11px;color:#aaa;margin-right:4px;">Key:</span>
+      <div class="legend-item"><div class="legend-dot" style="background:#dbeeff;border:1.5px solid #2563eb;"></div> View</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#dcfce7;border:1.5px solid #16a34a;"></div> Edit</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fee2e2;border:1.5px solid #dc2626;"></div> None</div>
+    </div>
+
+    <div class="modal-bulk">
+      <span class="bulk-label">Set all:</span>
+      <button class="bulk-btn" onclick="setAll('view')">View all</button>
+      <button class="bulk-btn" onclick="setAll('edit')">Edit all</button>
+      <button class="bulk-btn" onclick="setAll('none')">Remove all</button>
+      <span id="summary"></span>
+    </div>
+
+    <div class="modal-body" id="perm-body"></div>
+
+    <div class="modal-foot">
+      <button class="cancel-btn" onclick="showToast('Changes discarded.')">Cancel</button>
+      <button class="save-btn" onclick="doSave()">Save permissions</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const nav = [
+      {id:'pricing',     label:'Pricing',         kids:['Variable Labor Pricing','Pricing Compliance']},
+      {id:'reports',     label:'Reports',          kids:['Recents','My Reports','Labor Op Code Usage']},
+      {id:'vpg',         label:'VPG Groups',       kids:['Analyzer','Reports','Settings']},
+      {id:'filesmart',   label:'FileSmart',        kids:['FileSmart Dashboard','Labor Rate Increase Analysis','Parts Increase Analysis','Dual GM Submission Analysis','Warranty Labor Admin','Warranty Parts Admin']},
+      {id:'rules',       label:'Rules',            kids:['Labor Categorization','Pay Types','Misc Charges']},
+      {id:'dealer',      label:'Dealer Settings',  kids:[]},
+      {id:'roviewer',    label:'RO Viewer',        kids:[]},
+      {id:'opportunity', label:'Opportunity',      kids:['PGA Results','Executive Review','Executive Recap','PriceSmart Revenue Increase']},
+      {id:'techcf',      label:'Tech CF',          kids:[]},
+    ];
+
+    const ROW = {
+      none: {bg:'#ffffff', border:'#e9ecef'},
+      view: {bg:'#dbeeff', border:'#93c5fd'},
+      edit: {bg:'#dcfce7', border:'#86efac'},
+    };
+    const SUB = {
+      none: {bg:'#ffffff', border:'#f1f3f5'},
+      view: {bg:'#eff6ff', border:'#bfdbfe'},
+      edit: {bg:'#f0fdf4', border:'#bbf7d0'},
+    };
+    const PILL_ON = {
+      view: {bg:'#2563eb', color:'#fff', border:'#2563eb'},
+      edit: {bg:'#16a34a', color:'#fff', border:'#16a34a'},
+      none: {bg:'#dc2626', color:'#fff', border:'#dc2626'},
+    };
+    const PILL_OFF = {bg:'#f1f3f5', color:'#adb5bd', border:'#dee2e6'};
+
+    const STATE = {};
+    const OPEN  = {};
+    nav.forEach(c => {
+      STATE[c.id] = 'none';
+      OPEN[c.id]  = true;
+      c.kids.forEach((_,i) => { STATE[c.id+'_'+i] = 'none'; });
+    });
+
+    function colorRow(el, perm, isSub) {
+      const c = (isSub ? SUB : ROW)[perm];
+      el.style.setProperty('background-color', c.bg, 'important');
+      el.style.borderBottomColor = c.border;
+    }
+
+    function colorPills(groupEl, perm) {
+      groupEl.querySelectorAll('button[data-perm]').forEach(btn => {
+        const p = btn.dataset.perm;
+        const s = p === perm ? PILL_ON[p] : PILL_OFF;
+        btn.style.background   = s.bg;
+        btn.style.color        = s.color;
+        btn.style.borderColor  = s.border;
+      });
+    }
+
+    function applyPerm(key, perm, isSub) {
+      STATE[key] = perm;
+      const row  = document.getElementById('r_'+key);
+      const pills= document.getElementById('pg_'+key);
+      if (row)  colorRow(row, perm, isSub);
+      if (pills) colorPills(pills, perm);
+    }
+
+    function setPerm(key, perm, isParent) {
+      applyPerm(key, perm, !isParent);
+      if (isParent) {
+        const cat = nav.find(c => c.id === key);
+        if (cat) cat.kids.forEach((_,i) => applyPerm(key+'_'+i, perm, true));
+      } else {
+        const parts = key.split('_');
+        const catId = parts.slice(0,-1).join('_');
+        const cat = nav.find(c => c.id === catId);
+        if (cat) {
+          const all = cat.kids.map((_,i) => STATE[catId+'_'+i]);
+          const resolved = all.every(p => p === all[0]) ? all[0] : 'none';
+          applyPerm(catId, resolved, false);
+        }
+      }
+      updateSummary();
+    }
+
+    function setAll(perm) {
+      nav.forEach(c => setPerm(c.id, perm, true));
+    }
+
+    function toggleSection(id) {
+      OPEN[id] = !OPEN[id];
+      const sec  = document.getElementById('sec_'+id);
+      const chev = document.getElementById('chev_'+id);
+      if (sec)  sec.style.display = OPEN[id] ? 'block' : 'none';
+      if (chev) chev.style.transform = OPEN[id] ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    function makePillGroup(key, isParent) {
+      const div = document.createElement('div');
+      div.className = 'pill-group';
+      div.id = 'pg_'+key;
+      ['view','edit','none'].forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'pill';
+        btn.dataset.perm = p;
+        btn.textContent = p.charAt(0).toUpperCase()+p.slice(1);
+        Object.assign(btn.style, {background:PILL_OFF.bg, color:PILL_OFF.color, borderColor:PILL_OFF.border});
+        btn.addEventListener('click', e => { e.stopPropagation(); setPerm(key, p, isParent); });
+        div.appendChild(btn);
+      });
+      return div;
+    }
+
+    function buildUI() {
+      const body = document.getElementById('perm-body');
+      nav.forEach(c => {
+        const hasKids = c.kids.length > 0;
+
+        const row = document.createElement('div');
+        row.className = 'cat-row';
+        row.id = 'r_'+c.id;
+
+        const chev = document.createElement('span');
+        chev.className = 'chev';
+        chev.id = 'chev_'+c.id;
+        chev.textContent = '▶';
+        chev.style.visibility = hasKids ? 'visible' : 'hidden';
+        chev.style.transform = 'rotate(90deg)';
+
+        const lbl = document.createElement('span');
+        lbl.className = 'row-label cat-label';
+        lbl.textContent = c.label;
+
+        row.appendChild(chev);
+        row.appendChild(lbl);
+        row.appendChild(makePillGroup(c.id, true));
+        if (hasKids) row.addEventListener('click', () => toggleSection(c.id));
+        body.appendChild(row);
+
+        if (hasKids) {
+          const sec = document.createElement('div');
+          sec.id = 'sec_'+c.id;
+          sec.style.display = 'block';
+
+          c.kids.forEach((kid, i) => {
+            const key = c.id+'_'+i;
+            const subRow = document.createElement('div');
+            subRow.className = 'sub-row';
+            subRow.id = 'r_'+key;
+
+            const dot = document.createElement('span');
+            dot.className = 'sub-dot';
+            const lbl2 = document.createElement('span');
+            lbl2.className = 'row-label';
+            lbl2.textContent = kid;
+
+            subRow.appendChild(dot);
+            subRow.appendChild(lbl2);
+            subRow.appendChild(makePillGroup(key, false));
+            sec.appendChild(subRow);
+          });
+          body.appendChild(sec);
+        }
+      });
+      updateSummary();
+    }
+
+    function updateSummary() {
+      let v=0, e=0;
+      nav.forEach(c => {
+        if (STATE[c.id]==='view') v++;
+        else if (STATE[c.id]==='edit') e++;
+      });
+      const el = document.getElementById('summary');
+      const parts = [];
+      if (e>0) parts.push('<span style="background:#dcfce7;color:#166534;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;">'+e+' edit</span>');
+      if (v>0) parts.push('<span style="background:#dbeeff;color:#1e40af;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;">'+v+' view</span>');
+      el.innerHTML = parts.join(' ');
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    function doSave() {
+      const lines = nav
+        .map(c => STATE[c.id] !== 'none' ? c.label + ' (' + STATE[c.id] + ')' : null)
+        .filter(Boolean);
+      const msg = lines.length
+        ? 'Permissions saved: ' + lines.join(', ')
+        : 'Permissions saved: no access granted.';
+      showToast(msg);
+    }
+
+    buildUI();
+  </script>
+</body>
+</html>
